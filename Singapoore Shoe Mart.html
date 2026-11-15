@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Singapoore Shoe Mart</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{--blue:#1d4ed8;--blue2:#2563eb;--soft:#eff4ff;--ink:#0f1b3d;--mute:#5b6787;--line:#dbe3f5;--ok:#15803d;--bad:#b91c1c;--warn:#b45309;--bg:#f7f9ff;--card:#fff}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);line-height:1.45}
+header{background:var(--blue);color:#fff;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:5}
+header h1{font-size:19px;margin:0}
+header button{background:#fff;color:var(--blue);border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer}
+main{max-width:1000px;margin:0 auto;padding:14px}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:4px 0 8px}
+.chip{border:1px solid var(--line);background:#fff;border-radius:99px;padding:7px 14px;white-space:nowrap;cursor:pointer;font-size:14px;color:var(--ink)}
+.chip.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+.fl{font-size:13px;color:var(--mute);margin:8px 0 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-top:10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+.card .ph{aspect-ratio:1;background:var(--soft) center/cover;display:flex;align-items:center;justify-content:center;color:var(--mute);font-size:13px}
+.card .b{padding:10px;display:flex;flex-direction:column;gap:4px;flex:1}
+.card h3{margin:0;font-size:15px}
+.price{font-weight:800;color:var(--blue);font-size:17px}
+.tag{font-size:12px;color:var(--mute)}
+.badge{display:inline-block;font-size:12px;font-weight:700;border-radius:6px;padding:2px 8px}
+.in{background:#dcfce7;color:var(--ok)}.out{background:#fee2e2;color:var(--bad)}
+.sz{display:flex;flex-wrap:wrap;gap:4px}
+.sz span{font-size:12px;border:1px solid var(--line);border-radius:6px;padding:1px 6px}
+.sz span.x{text-decoration:line-through;color:#9aa5c4}
+.btn{border:0;border-radius:9px;padding:10px 14px;font-weight:700;cursor:pointer;background:var(--blue2);color:#fff;font-size:14px;text-decoration:none;display:inline-block;text-align:center}
+.btn.g{background:#16a34a}.btn.l{background:var(--soft);color:var(--blue)}.btn.r{background:#fee2e2;color:var(--bad)}
+.btn.s{padding:6px 10px;font-size:13px}
+.panel{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px}
+.panel h2{margin:0 0 10px;font-size:17px}
+.tabs{display:flex;gap:6px;overflow-x:auto;margin-bottom:12px}
+label{display:block;font-size:13px;color:var(--mute);margin:8px 0 3px}
+input,select,textarea{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;font-size:15px;background:#fff;color:var(--ink)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.stat{background:var(--soft);border-radius:10px;padding:12px}
+.stat b{display:block;font-size:20px;color:var(--blue)}
+.stat span{font-size:13px;color:var(--mute)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+.tw{overflow-x:auto}
+.hide{display:none!important}
+.modal{position:fixed;inset:0;background:rgba(15,27,61,.55);display:flex;align-items:center;justify-content:center;padding:14px;z-index:20}
+.modal>div{background:#fff;border-radius:14px;padding:18px;max-width:380px;width:100%;max-height:92vh;overflow:auto;text-align:center}
+.pin{letter-spacing:8px;text-align:center;font-size:22px}
+.empty{text-align:center;color:var(--mute);padding:30px 10px}
+.thumb{width:44px;height:44px;border-radius:8px;background:var(--soft) center/cover}
+#qr{display:flex;justify-content:center;margin:10px 0}
+#rc{font-family:monospace;font-size:13px;text-align:left;width:300px;margin:0 auto}
+#rc hr{border:0;border-top:1px dashed #000}
+#rc .t{display:flex;justify-content:space-between}
+@media print{body *{visibility:hidden}#rc,#rc *{visibility:visible}#rc{position:absolute;left:0;top:0}}
+:focus-visible{outline:3px solid #93c5fd;outline-offset:2px}
+</style>
+</head>
+<body>
+<header><h1 id="shopName">Singapoore Shoe Mart</h1><button id="adminBtn">Owner login</button></header>
+<main>
+<!-- CUSTOMER VIEW -->
+<section id="cust">
+  <input id="q" placeholder="Search slippers, shoes, bags…" aria-label="Search">
+  <p class="fl">Who is it for</p><div class="chips" id="fPerson"></div>
+  <p class="fl">Product type</p><div class="chips" id="fType"></div>
+  <p class="fl">Usage</p><div class="chips" id="fUse"></div>
+  <p class="fl">Size (only sizes in stock)</p><div class="chips" id="fSize"></div>
+  <div class="grid" id="catalog"></div>
+</section>
+
+<!-- OWNER VIEW -->
+<section id="own" class="hide">
+  <div class="tabs" id="tabs"></div>
+
+  <div id="t-bill">
+    <div class="panel"><h2>Counter billing</h2>
+      <div class="row"><div><label>Product</label><select id="bP"></select></div><div><label>Size</label><select id="bS"></select></div></div>
+      <div class="row"><div><label>Quantity</label><input id="bQ" type="number" min="1" value="1"></div><div><label>&nbsp;</label><button class="btn" id="bAdd" style="width:100%">Add to bill</button></div></div>
+    </div>
+    <div class="panel"><h2>Current bill</h2>
+      <div class="tw"><table id="bTable"></table></div>
+      <div class="row"><div><label>Customer name (optional)</label><input id="cN"></div><div><label>Phone (optional)</label><input id="cP" inputmode="tel" placeholder="10-digit number"></div></div>
+      <div class="row"><div><label>Discount ₹</label><input id="bD" type="number" min="0" value="0"></div><div><label>Payment</label><select id="bM"><option>UPI</option><option>Cash</option></select></div></div>
+      <p class="price" id="bTot" style="font-size:22px">Total ₹0</p>
+      <button class="btn g" id="bGen" style="width:100%">Generate bill</button>
+    </div>
+  </div>
+
+  <div id="t-stock" class="hide">
+    <div class="panel"><h2 id="fTitle">Add product</h2>
+      <input type="hidden" id="pId">
+      <label>Name</label><input id="pN">
+      <div class="row"><div><label>For</label><select id="pPe"></select></div><div><label>Type</label><select id="pTy"></select></div></div>
+      <div class="row"><div><label>Usage</label><select id="pUs"></select></div><div><label>Photo</label><input id="pPh" type="file" accept="image/*"></div></div>
+      <div class="row"><div><label>Buying price ₹ (private)</label><input id="pCo" type="number" min="0"></div><div><label>Selling price ₹</label><input id="pSe" type="number" min="0"></div></div>
+      <label>Sizes and stock — write size:quantity, comma separated</label>
+      <input id="pSz" placeholder="UK 6:4, UK 7:6, UK 8:2">
+      <p class="tag">For bags with no sizes, write Standard:10</p>
+      <div style="display:flex;gap:8px;margin-top:10px"><button class="btn" id="pSave">Save product</button><button class="btn l" id="pClr">Clear</button></div>
+    </div>
+    <div class="panel"><h2>Low stock (2 or fewer)</h2><div id="low"></div></div>
+    <div class="panel"><h2>All products</h2><div class="tw"><table id="pTable"></table></div></div>
+  </div>
+
+  <div id="t-rep" class="hide">
+    <div class="panel"><h2>Today</h2><div class="stats" id="sToday"></div></div>
+    <div class="panel"><h2>This month</h2><div class="stats" id="sMonth"></div></div>
+    <div class="panel"><h2>Yearly report</h2>
+      <label>Year</label><select id="yrSel"></select>
+      <div class="stats" id="sYear" style="margin-top:10px"></div>
+      <div class="tw" style="margin-top:10px"><table id="yTable"></table></div>
+      <button class="btn l" id="csvY" style="margin-top:10px">Download year report (CSV)</button>
+    </div>
+    <div class="panel"><h2>Best sellers this month</h2><div id="best"></div></div>
+    <div class="panel"><h2>Recent bills</h2><div class="tw"><table id="sTable"></table></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn l" id="allBtn">Show all bills</button><button class="btn l" id="csv">Download month report (CSV)</button></div></div>
+  </div>
+
+  <div id="t-set" class="hide">
+    <div class="panel"><h2>Shop settings</h2>
+      <label>Shop name</label><input id="sName">
+      <label>WhatsApp number with country code (e.g. 919876543210)</label><input id="sWa" inputmode="tel">
+      <label>UPI ID (e.g. shop@okicici)</label><input id="sUpi">
+      <label>Shop address (shown on bill)</label><input id="sAdr">
+      <label>New owner PIN (leave empty to keep)</label><input id="sPin" type="password" inputmode="numeric">
+      <button class="btn" id="sSave" style="margin-top:12px">Save settings</button>
+    </div>
+    <div class="panel"><h2>Backup</h2>
+      <p class="tag">Data lives only on this device. Download a backup regularly.</p>
+      <button class="btn l" id="bk">Download backup</button>
+      <label>Restore backup file</label><input type="file" id="rs" accept=".json">
+    </div>
+  </div>
+</section>
+</main>
+
+<div class="modal hide" id="mPin"><div>
+  <h2>Owner login</h2><input id="pinIn" class="pin" type="password" inputmode="numeric" maxlength="8" placeholder="PIN">
+  <p class="tag" id="pinErr"></p>
+  <div style="display:flex;gap:8px;justify-content:center"><button class="btn" id="pinOk">Open</button><button class="btn l" id="pinNo">Cancel</button></div>
+</div></div>
+
+<div class="modal hide" id="mBill"><div>
+  <h2>Bill ready</h2>
+  <div id="payBox"><p class="tag">Customer scans to pay</p><div id="qr"></div><p class="price" id="qrAmt"></p></div>
+  <div id="rc"></div>
+  <div style="display:grid;gap:8px;margin-top:12px">
+    <button class="btn g" id="bDone">Payment received — save bill</button>
+    <button class="btn l" id="bPrint">Print receipt</button>
+    <button class="btn l" id="bWa">Send on WhatsApp</button>
+    <button class="btn r" id="bCancel">Back</button>
+  </div>
+</div></div>
+
+<div class="modal hide" id="mEdit"><div style="text-align:left">
+  <h2 id="eTitle" style="text-align:center">Edit bill</h2>
+  <p class="tag">Change a quantity, or set it to 0 to remove that item. Stock updates automatically.</p>
+  <div id="eItems"></div>
+  <div class="row"><div><label>Customer name</label><input id="eN"></div><div><label>Phone</label><input id="eP" inputmode="tel"></div></div>
+  <div class="row"><div><label>Discount ₹</label><input id="eD" type="number" min="0"></div><div><label>Payment</label><select id="eM"><option>UPI</option><option>Cash</option></select></div></div>
+  <div style="display:flex;gap:8px;margin-top:14px"><button class="btn g" id="eSave" style="flex:1">Save changes</button><button class="btn l" id="eCancel" style="flex:1">Cancel</button></div>
+</div></div>
+
+<div class="modal hide" id="mAsk" style="z-index:40"><div>
+  <p id="aMsg" style="white-space:pre-line;margin:6px 0 16px;font-size:16px"></p>
+  <div style="display:flex;gap:8px"><button class="btn r" id="aYes" style="flex:1"></button><button class="btn l" id="aNo" style="flex:1"></button></div>
+</div></div>
+
+<script>
+const $=id=>document.getElementById(id);
+/* In-page dialogs: browser pop-ups can be blocked, so confirm and alert use this instead */
+function ask(msg,yes,no){return new Promise(res=>{
+  $("aMsg").textContent=msg;$("aYes").textContent=yes||"Yes";
+  $("aNo").textContent=no||"Cancel";$("aNo").classList.toggle("hide",no===null);
+  $("aYes").className="btn "+(no===null?"":"r");
+  $("mAsk").classList.remove("hide");
+  const done=v=>{$("mAsk").classList.add("hide");res(v)};
+  $("aYes").onclick=()=>done(true);$("aNo").onclick=()=>done(false)})}
+window.alert=m=>{ask(String(m),"OK",null)};
+const PERSON=["Boys","Girls","Children","Seniors"],TYPE=["Slippers","Shoes","Travel Bags"],USE=["Normal / Daily","Professional / Formal"];
+const K="ssm_v1";
+let D=load();
+function load(){try{const d=JSON.parse(localStorage.getItem(K));if(d&&d.products)return d}catch(e){}
+  return {products:[],sales:[],set:{name:"Singapoore Shoe Mart",wa:"",upi:"",adr:"",pin:"1234"}}}
+function save(){try{localStorage.setItem(K,JSON.stringify(D))}catch(e){alert("Storage is full. Download a backup and remove old products or photos.")}}
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const inr=n=>"₹"+Math.round(n*100)/100;
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const total=p=>Object.values(p.sizes).reduce((a,b)=>a+b,0);
+let admin=false,fp="All",ft="All",fu="All",fs="All",cart=[],pending=null;
+
+/* ---------- Customer catalogue ---------- */
+function chips(el,list,cur,set){
+  el.innerHTML="";["All",...list].forEach(v=>{const b=document.createElement("button");b.className="chip"+(v===cur?" on":"");b.textContent=v;b.onclick=()=>{set(v);renderCust()};el.appendChild(b)})}
+function renderCust(){
+  $("shopName").textContent=D.set.name;document.title=D.set.name;
+  const allSizes=[...new Set(D.products.flatMap(p=>Object.entries(p.sizes).filter(([,n])=>n>0).map(([s])=>s)))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+  if(fs!=="All"&&!allSizes.includes(fs))fs="All";
+  chips($("fPerson"),PERSON,fp,v=>fp=v);chips($("fType"),TYPE,ft,v=>ft=v);chips($("fUse"),USE,fu,v=>fu=v);chips($("fSize"),allSizes,fs,v=>fs=v);
+  const q=$("q").value.toLowerCase().trim();
+  const list=D.products.filter(p=>(fp==="All"||p.person===fp)&&(ft==="All"||p.type===ft)&&(fu==="All"||p.use===fu)&&(fs==="All"||(p.sizes[fs]||0)>0)&&(!q||p.name.toLowerCase().includes(q)));
+  if(!list.length){$("catalog").innerHTML='<div class="empty" style="grid-column:1/-1">'+(D.products.length?"Nothing matches these filters.":"No products yet. The owner can add them after logging in.")+"</div>";return}
+  $("catalog").innerHTML=list.map(p=>{
+    const inS=total(p)>0;
+    const sizes=Object.entries(p.sizes).map(([s,n])=>`<span class="${n>0?"":"x"}">${esc(s)}</span>`).join("");
+    const msg=encodeURIComponent(`Hi, I want to check "${p.name}" (${inr(p.sell)}). Is it available?`);
+    const wa=D.set.wa?`https://wa.me/${D.set.wa.replace(/\D/g,"")}?text=${msg}`:"";
+    return `<div class="card"><div class="ph" style="${p.img?`background-image:url(${p.img})`:""}">${p.img?"":"No photo"}</div>
+    <div class="b"><h3>${esc(p.name)}</h3><div class="tag">${esc(p.person)} · ${esc(p.type)} · ${esc(p.use)}</div>
+    <div class="price">${inr(p.sell)}</div><div class="sz">${sizes}</div>
+    <div><span class="badge ${inS?"in":"out"}">${inS?"In stock":"Out of stock"}</span></div>
+    ${wa?`<a class="btn g s" href="${wa}" target="_blank" rel="noopener" style="margin-top:auto">Ask on WhatsApp</a>`:""}</div></div>`}).join("")}
+$("q").oninput=renderCust;
+
+/* ---------- Login ---------- */
+$("adminBtn").onclick=()=>{if(admin){admin=false;showMode();return}$("pinIn").value="";$("pinErr").textContent="";$("mPin").classList.remove("hide");$("pinIn").focus()};
+$("pinNo").onclick=()=>$("mPin").classList.add("hide");
+$("pinOk").onclick=()=>{if($("pinIn").value===D.set.pin){admin=true;$("mPin").classList.add("hide");showMode();tab("bill")}else $("pinErr").textContent="Wrong PIN. Try again."};
+$("pinIn").onkeydown=e=>{if(e.key==="Enter")$("pinOk").click()};
+function showMode(){$("cust").classList.toggle("hide",admin);$("own").classList.toggle("hide",!admin);$("adminBtn").textContent=admin?"Customer view":"Owner login";admin?tab("bill"):renderCust()}
+
+/* ---------- Owner tabs ---------- */
+const TABS=[["bill","Billing"],["stock","Products & stock"],["rep","Sales & profit"],["set","Settings"]];
+function tab(t){
+  $("tabs").innerHTML=TABS.map(([k,n])=>`<button class="chip ${k===t?"on":""}" onclick="tab('${k}')">${n}</button>`).join("");
+  TABS.forEach(([k])=>$("t-"+k).classList.toggle("hide",k!==t));
+  if(t==="bill")renderBill();if(t==="stock")renderStock();if(t==="rep")renderRep();if(t==="set")renderSet()}
+
+/* ---------- Billing ---------- */
+function fillSel(el,list,v){el.innerHTML=list.map(x=>`<option>${x}</option>`).join("");if(v)el.value=v}
+function renderBill(){
+  $("bP").innerHTML=D.products.map(p=>`<option value="${p.id}">${esc(p.name)} — ${inr(p.sell)}</option>`).join("")||"<option value=''>No products</option>";
+  sizeOpts();renderCart()}
+function sizeOpts(){
+  const p=D.products.find(x=>x.id===$("bP").value);
+  $("bS").innerHTML=p?Object.entries(p.sizes).filter(([,n])=>n>0).map(([s,n])=>`<option value="${esc(s)}">${esc(s)} (${n} left)</option>`).join(""):""}
+$("bP").onchange=sizeOpts;
+$("bAdd").onclick=()=>{
+  const p=D.products.find(x=>x.id===$("bP").value),s=$("bS").value,q=parseInt($("bQ").value)||1;
+  if(!p||!s)return alert("Choose a product and size that is in stock.");
+  const used=cart.filter(c=>c.id===p.id&&c.size===s).reduce((a,c)=>a+c.qty,0);
+  if(used+q>p.sizes[s])return alert("Only "+p.sizes[s]+" in stock for this size.");
+  const ex=cart.find(c=>c.id===p.id&&c.size===s);
+  ex?ex.qty+=q:cart.push({id:p.id,name:p.name,size:s,qty:q,sell:p.sell,cost:p.cost});
+  $("bQ").value=1;renderCart()};
+function sub(){return cart.reduce((a,c)=>a+c.qty*c.sell,0)}
+function grand(){return Math.max(0,sub()-(parseFloat($("bD").value)||0))}
+function renderCart(){
+  $("bTable").innerHTML=cart.length?"<tr><th>Item</th><th>Size</th><th>Qty</th><th>Amount</th><th></th></tr>"+cart.map((c,i)=>`<tr><td>${esc(c.name)}</td><td>${esc(c.size)}</td><td>${c.qty}</td><td>${inr(c.qty*c.sell)}</td><td><button class="btn r s" onclick="cart.splice(${i},1);renderCart()">Remove</button></td></tr>`).join(""):'<tr><td class="empty">No items added yet.</td></tr>';
+  $("bTot").textContent="Total "+inr(grand())}
+$("bD").oninput=renderCart;
+function mkSale(){
+  const disc=Math.min(parseFloat($("bD").value)||0,sub());
+  return {id:uid(),no:"B"+String(Math.max(0,...D.sales.map(x=>parseInt(String(x.no).slice(1))||0))+1).padStart(4,"0"),t:Date.now(),name:$("cN").value.trim(),phone:$("cP").value.replace(/\D/g,""),items:cart.map(c=>({...c})),disc,total:grand(),mode:$("bM").value,
+    profit:cart.reduce((a,c)=>a+c.qty*(c.sell-c.cost),0)-disc}}
+function receipt(s){
+  const d=new Date(s.t).toLocaleString("en-IN");
+  return `<div style="text-align:center"><b>${esc(D.set.name)}</b><br>${esc(D.set.adr)}</div><hr>Bill ${s.no}<br>${d}${s.name?"<br>Customer: "+esc(s.name):""}<hr>`+
+  s.items.map(i=>`<div>${esc(i.name)} (${esc(i.size)})</div><div class="t"><span>${i.qty} x ${i.sell}</span><span>${inr(i.qty*i.sell)}</span></div>`).join("")+
+  `<hr>${s.disc?`<div class="t"><span>Discount</span><span>-${inr(s.disc)}</span></div>`:""}<div class="t"><b>TOTAL</b><b>${inr(s.total)}</b></div><div>Paid by: ${s.mode}</div><hr><div style="text-align:center">Thank you. Visit again.</div>`}
+function waText(s){
+  return `*${D.set.name}*%0ABill ${s.no} (${new Date(s.t).toLocaleDateString("en-IN")})%0A`+s.items.map(i=>encodeURIComponent(`${i.name} (${i.size}) x${i.qty} = ${inr(i.qty*i.sell)}`)).join("%0A")+`%0A*Total: ${encodeURIComponent(inr(s.total))}*%0AThank you!`}
+$("bGen").onclick=()=>{
+  if(!cart.length)return alert("Add at least one item.");
+  pending=mkSale();$("rc").innerHTML=receipt(pending);
+  const upi=pending.mode==="UPI";$("payBox").classList.toggle("hide",!upi);$("qr").innerHTML="";
+  if(upi){
+    if(!D.set.upi){$("qr").innerHTML='<p class="tag">Add your UPI ID in Settings to show the QR code.</p>'}
+    else if(window.QRCode){
+      const url=`upi://pay?pa=${encodeURIComponent(D.set.upi)}&pn=${encodeURIComponent(D.set.name)}&am=${pending.total.toFixed(2)}&cu=INR&tn=${encodeURIComponent("Bill "+pending.no)}`;
+      new QRCode($("qr"),{text:url,width:220,height:220})}
+    else $("qr").innerHTML='<p class="tag">QR needs internet the first time. Connect and try again.</p>';
+    $("qrAmt").textContent="Pay "+inr(pending.total)}
+  $("mBill").classList.remove("hide")};
+$("bCancel").onclick=()=>$("mBill").classList.add("hide");
+$("bPrint").onclick=()=>window.print();
+$("bWa").onclick=()=>{const ph=pending.phone||prompt("Customer WhatsApp number (with country code, e.g. 919876543210)");if(!ph)return;
+  window.open(`https://wa.me/${ph.length===10?"91"+ph:ph}?text=${waText(pending)}`,"_blank")};
+$("bDone").onclick=()=>{
+  for(const c of pending.items){const p=D.products.find(x=>x.id===c.id);if(p)p.sizes[c.size]=Math.max(0,p.sizes[c.size]-c.qty)}
+  D.sales.push(pending);save();cart=[];pending=null;$("cN").value=$("cP").value="";$("bD").value=0;
+  $("mBill").classList.add("hide");renderBill()};
+
+/* ---------- Stock ---------- */
+function parseSizes(t){const o={};t.split(",").forEach(x=>{const [s,n]=x.split(":");if(s&&s.trim())o[s.trim()]=Math.max(0,parseInt(n)||0)});return o}
+function resize(file){return new Promise(res=>{const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const m=480,k=Math.min(1,m/Math.max(im.width,im.height)),c=document.createElement("canvas");c.width=im.width*k;c.height=im.height*k;c.getContext("2d").drawImage(im,0,0,c.width,c.height);res(c.toDataURL("image/jpeg",.72))};im.src=r.result};r.readAsDataURL(file)})}
+function clearForm(){["pId","pN","pCo","pSe","pSz","pPh"].forEach(i=>$(i).value="");$("fTitle").textContent="Add product"}
+$("pClr").onclick=clearForm;
+$("pSave").onclick=async()=>{
+  const name=$("pN").value.trim(),sizes=parseSizes($("pSz").value);
+  if(!name||!$("pSe").value||!Object.keys(sizes).length)return alert("Enter name, selling price and at least one size like UK 6:4.");
+  const id=$("pId").value,old=D.products.find(p=>p.id===id);
+  let img=old?old.img:"";if($("pPh").files[0])img=await resize($("pPh").files[0]);
+  const p={id:id||uid(),name,person:$("pPe").value,type:$("pTy").value,use:$("pUs").value,cost:parseFloat($("pCo").value)||0,sell:parseFloat($("pSe").value),sizes,img};
+  old?Object.assign(old,p):D.products.push(p);save();clearForm();renderStock()};
+function renderStock(){
+  fillSel($("pPe"),PERSON);fillSel($("pTy"),TYPE);fillSel($("pUs"),USE);
+  const low=[];D.products.forEach(p=>Object.entries(p.sizes).forEach(([s,n])=>{if(n<=2)low.push(`<div style="padding:4px 0">${esc(p.name)} — ${esc(s)}: <span class="badge ${n?"in":"out"}" style="${n?"background:#fef3c7;color:var(--warn)":""}">${n?n+" left":"Out"}</span></div>`)}));
+  $("low").innerHTML=low.join("")||'<p class="tag">All sizes have enough stock.</p>';
+  $("pTable").innerHTML=D.products.length?"<tr><th></th><th>Product</th><th>Buy / Sell</th><th>Stock</th><th></th></tr>"+D.products.map(p=>`<tr><td><div class="thumb" style="${p.img?`background-image:url(${p.img})`:""}"></div></td><td>${esc(p.name)}<div class="tag">${esc(p.person)} · ${esc(p.type)}</div></td><td>${inr(p.cost)} / ${inr(p.sell)}</td><td>${total(p)}</td><td style="white-space:nowrap"><button class="btn l s" onclick="edit('${p.id}')">Edit</button> <button class="btn r s" onclick="del('${p.id}')">Delete</button></td></tr>`).join(""):'<tr><td class="empty">No products yet. Add your first one above.</td></tr>'}
+function edit(id){const p=D.products.find(x=>x.id===id);$("fTitle").textContent="Edit product";
+  $("pId").value=p.id;$("pN").value=p.name;$("pPe").value=p.person;$("pTy").value=p.type;$("pUs").value=p.use;$("pCo").value=p.cost;$("pSe").value=p.sell;
+  $("pSz").value=Object.entries(p.sizes).map(([s,n])=>s+":"+n).join(", ");scrollTo({top:0,behavior:"smooth"})}
+async function del(id){if(await ask("Delete this product?","Delete","Cancel")){D.products=D.products.filter(p=>p.id!==id);save();renderStock()}}
+
+/* ---------- Reports ---------- */
+function stats(list){
+  const rev=list.reduce((a,s)=>a+s.total,0),pr=list.reduce((a,s)=>a+s.profit,0),
+  upi=list.filter(s=>s.mode==="UPI").reduce((a,s)=>a+s.total,0),cash=rev-upi;
+  return [["Turnover",inr(rev)],["Net profit",inr(pr)],["UPI",inr(upi)],["Cash",inr(cash)],["Bills",list.length]].map(([n,v])=>`<div class="stat"><b>${v}</b><span>${n}</span></div>`).join("")}
+function monthSales(){const n=new Date();return D.sales.filter(s=>{const d=new Date(s.t);return d.getMonth()===n.getMonth()&&d.getFullYear()===n.getFullYear()})}
+function renderRep(){
+  const ms=monthSales(),today=new Date().toDateString();
+  $("sToday").innerHTML=stats(D.sales.filter(s=>new Date(s.t).toDateString()===today));
+  $("sMonth").innerHTML=stats(ms);
+  renderYear();
+  const c={};ms.forEach(s=>s.items.forEach(i=>c[i.name]=(c[i.name]||0)+i.qty));
+  const b=Object.entries(c).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  $("best").innerHTML=b.map(([n,q])=>`<div style="padding:4px 0">${esc(n)} — ${q} sold</div>`).join("")||'<p class="tag">No sales this month yet.</p>';
+  $("sTable").innerHTML=D.sales.length?"<tr><th>Bill</th><th>Date</th><th>Pay</th><th>Total</th><th>Profit</th><th></th></tr>"+(showAll?D.sales.slice():D.sales.slice(-15)).reverse().map(s=>`<tr><td>${s.no}</td><td>${new Date(s.t).toLocaleDateString("en-IN")}</td><td>${s.mode}</td><td>${inr(s.total)}</td><td>${inr(s.profit)}</td><td style="white-space:nowrap"><button class="btn l s" onclick="editSale('${s.id}')">Edit</button> <button class="btn r s" onclick="delSale('${s.id}')">Delete</button></td></tr>`).join(""):'<tr><td class="empty">No bills saved yet.</td></tr>';
+  $("allBtn").textContent=showAll?"Show last 15 only":"Show all bills ("+D.sales.length+")"}
+let editing=null;
+function editSale(id){
+  const s=D.sales.find(x=>x.id===id);if(!s)return;editing=s;
+  $("eTitle").textContent="Edit bill "+s.no;
+  $("eItems").innerHTML=s.items.map((i,k)=>`<div class="row" style="align-items:center;margin-bottom:6px"><div>${esc(i.name)} (${esc(i.size)})<div class="tag">${inr(i.sell)} each</div></div><input type="number" min="0" value="${i.qty}" id="eq${k}" aria-label="Quantity"></div>`).join("");
+  $("eN").value=s.name||"";$("eP").value=s.phone||"";$("eD").value=s.disc||0;$("eM").value=s.mode;
+  $("mEdit").classList.remove("hide")}
+$("eCancel").onclick=()=>{$("mEdit").classList.add("hide");editing=null};
+$("eSave").onclick=()=>{
+  const s=editing;if(!s)return;
+  const q=s.items.map((_,k)=>Math.max(0,parseInt($("eq"+k).value)||0));
+  if(!q.some(n=>n>0))return alert("A bill needs at least one item. Use Delete to remove the whole bill.");
+  for(let k=0;k<s.items.length;k++){
+    const i=s.items[k],diff=q[k]-i.qty,p=D.products.find(x=>x.id===i.id);
+    if(diff>0&&p&&(p.sizes[i.size]||0)<diff)return alert("Only "+(p.sizes[i.size]||0)+" more in stock for "+i.name+" ("+i.size+").")}
+  s.items.forEach((i,k)=>{const diff=q[k]-i.qty,p=D.products.find(x=>x.id===i.id);
+    if(p&&diff)p.sizes[i.size]=Math.max(0,(p.sizes[i.size]||0)-diff);i.qty=q[k]});
+  s.items=s.items.filter(i=>i.qty>0);
+  const sub=s.items.reduce((a,i)=>a+i.qty*i.sell,0);
+  s.disc=Math.min(Math.max(parseFloat($("eD").value)||0,0),sub);
+  s.total=sub-s.disc;
+  s.profit=s.items.reduce((a,i)=>a+i.qty*(i.sell-i.cost),0)-s.disc;
+  s.name=$("eN").value.trim();s.phone=$("eP").value.replace(/\D/g,"");s.mode=$("eM").value;
+  save();$("mEdit").classList.add("hide");editing=null;renderRep()};
+let showAll=false;
+$("allBtn").onclick=()=>{showAll=!showAll;renderRep()};
+async function delSale(id){
+  const s=D.sales.find(x=>String(x.id)===String(id));if(!s)return;
+  if(!await ask("Delete bill "+s.no+" ("+inr(s.total)+")?\nIt will be removed from the today, month and year reports.","Delete bill","Cancel"))return;
+  if(await ask("Put the items from this bill back into stock?","Yes, add back to stock","No, leave stock")){
+    s.items.forEach(i=>{const p=D.products.find(x=>x.id===i.id);if(p)p.sizes[i.size]=(p.sizes[i.size]||0)+i.qty})}
+  D.sales=D.sales.filter(x=>String(x.id)!==String(id));save();renderRep()}
+$("csv").onclick=()=>{
+  const rows=[["Bill","Date","Customer","Phone","Items","Payment","Discount","Total","Profit"]];
+  monthSales().forEach(s=>rows.push([s.no,new Date(s.t).toLocaleString("en-IN"),s.name,s.phone,s.items.map(i=>`${i.name} ${i.size} x${i.qty}`).join("; "),s.mode,s.disc,s.total,s.profit]));
+  dl("sales-report.csv","text/csv",rows.map(r=>r.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(",")).join("\n"))};
+function yearSales(y){return D.sales.filter(s=>new Date(s.t).getFullYear()===y)}
+function renderYear(){
+  const cur=new Date().getFullYear(),ys=[...new Set([cur,...D.sales.map(s=>new Date(s.t).getFullYear())])].sort((a,b)=>b-a);
+  const keep=+$("yrSel").value||cur;
+  $("yrSel").innerHTML=ys.map(y=>`<option>${y}</option>`).join("");
+  $("yrSel").value=ys.includes(keep)?keep:cur;
+  const y=+$("yrSel").value,list=yearSales(y);
+  $("sYear").innerHTML=stats(list);
+  const M=["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const m=M.map(()=>({b:0,r:0,p:0}));
+  list.forEach(s=>{const x=m[new Date(s.t).getMonth()];x.b++;x.r+=s.total;x.p+=s.profit});
+  $("yTable").innerHTML="<tr><th>Month</th><th>Bills</th><th>Turnover</th><th>Profit</th></tr>"+M.map((n,i)=>`<tr><td>${n}</td><td>${m[i].b}</td><td>${inr(m[i].r)}</td><td>${inr(m[i].p)}</td></tr>`).join("")+
+    `<tr><th>Total</th><th>${list.length}</th><th>${inr(m.reduce((a,x)=>a+x.r,0))}</th><th>${inr(m.reduce((a,x)=>a+x.p,0))}</th></tr>`}
+$("yrSel").onchange=renderYear;
+$("csvY").onclick=()=>{
+  const y=+$("yrSel").value,rows=[["Bill","Date","Customer","Phone","Items","Payment","Discount","Total","Profit"]];
+  yearSales(y).forEach(s=>rows.push([s.no,new Date(s.t).toLocaleString("en-IN"),s.name,s.phone,s.items.map(i=>`${i.name} ${i.size} x${i.qty}`).join("; "),s.mode,s.disc,s.total,s.profit]));
+  dl("sales-report-"+y+".csv","text/csv",rows.map(r=>r.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(",")).join("\n"))};
+function dl(n,t,txt){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([txt],{type:t}));a.download=n;a.click()}
+
+/* ---------- Settings & backup ---------- */
+function renderSet(){$("sName").value=D.set.name;$("sWa").value=D.set.wa;$("sUpi").value=D.set.upi;$("sAdr").value=D.set.adr;$("sPin").value=""}
+$("sSave").onclick=()=>{D.set.name=$("sName").value.trim()||"Singapoore Shoe Mart";D.set.wa=$("sWa").value.trim();D.set.upi=$("sUpi").value.trim();D.set.adr=$("sAdr").value.trim();
+  const p=$("sPin").value.trim();if(p){if(p.length<4)return alert("PIN needs at least 4 digits.");D.set.pin=p}
+  save();$("shopName").textContent=D.set.name;alert("Settings saved.")};
+$("bk").onclick=()=>dl("shoe-mart-backup-"+new Date().toISOString().slice(0,10)+".json","application/json",JSON.stringify(D));
+$("rs").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!d.products||!d.sales)throw 0;ask("Replace all current data with this backup?","Replace","Cancel").then(ok=>{if(ok){D=d;save();location.reload()}})}catch(x){alert("This is not a valid backup file.")}};r.readAsText(f)};
+
+renderCust();
+</script>
+</body>
+</html>
