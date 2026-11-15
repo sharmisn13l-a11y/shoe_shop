@@ -48,7 +48,6 @@ th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left;vertic
 .hide{display:none!important}
 .modal{position:fixed;inset:0;background:rgba(15,27,61,.55);display:flex;align-items:center;justify-content:center;padding:14px;z-index:20}
 .modal>div{background:#fff;border-radius:14px;padding:18px;max-width:380px;width:100%;max-height:92vh;overflow:auto;text-align:center}
-.pin{letter-spacing:8px;text-align:center;font-size:22px}
 .empty{text-align:center;color:var(--mute);padding:30px 10px}
 .thumb{width:44px;height:44px;border-radius:8px;background:var(--soft) center/cover}
 #qr{display:flex;justify-content:center;margin:10px 0}
@@ -126,22 +125,24 @@ th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left;vertic
       <label>WhatsApp number with country code (e.g. 919876543210)</label><input id="sWa" inputmode="tel">
       <label>UPI ID (e.g. shop@okicici)</label><input id="sUpi">
       <label>Shop address (shown on bill)</label><input id="sAdr">
-      <label>New owner PIN (leave empty to keep)</label><input id="sPin" type="password" inputmode="numeric">
-      <button class="btn" id="sSave" style="margin-top:12px">Save settings</button>
+      <div style="display:flex;gap:8px;margin-top:12px"><button class="btn" id="sSave">Save settings</button><button class="btn l" id="lo">Log out</button></div>
     </div>
     <div class="panel"><h2>Backup</h2>
-      <p class="tag">Data lives only on this device. Download a backup regularly.</p>
+      <p class="tag">Your data is saved online and shows on every device you log in to. A backup file is still a good safety copy.</p>
       <button class="btn l" id="bk">Download backup</button>
       <label>Restore backup file</label><input type="file" id="rs" accept=".json">
+      <button class="btn l" id="imp" style="margin-top:12px">Import data saved on this device (older version)</button>
     </div>
   </div>
 </section>
 </main>
 
-<div class="modal hide" id="mPin"><div>
-  <h2>Owner login</h2><input id="pinIn" class="pin" type="password" inputmode="numeric" maxlength="8" placeholder="PIN">
-  <p class="tag" id="pinErr"></p>
-  <div style="display:flex;gap:8px;justify-content:center"><button class="btn" id="pinOk">Open</button><button class="btn l" id="pinNo">Cancel</button></div>
+<div class="modal hide" id="mPin"><div style="text-align:left">
+  <h2 style="text-align:center">Owner login</h2>
+  <label>Email</label><input id="pinEm" type="email" autocomplete="username">
+  <label>Password</label><input id="pinIn" type="password" autocomplete="current-password">
+  <p class="tag" id="pinErr" style="text-align:center"></p>
+  <div style="display:flex;gap:8px;justify-content:center"><button class="btn" id="pinOk">Log in</button><button class="btn l" id="pinNo">Cancel</button></div>
 </div></div>
 
 <div class="modal hide" id="mBill"><div>
@@ -183,15 +184,26 @@ function ask(msg,yes,no){return new Promise(res=>{
 window.alert=m=>{ask(String(m),"OK",null)};
 const PERSON=["Boys","Girls","Children","Seniors"],TYPE=["Slippers","Shoes","Travel Bags"],USE=["Normal / Daily","Professional / Formal"];
 const K="ssm_v1";
-let D=load();
-function load(){try{const d=JSON.parse(localStorage.getItem(K));if(d&&d.products)return d}catch(e){}
-  return {products:[],sales:[],set:{name:"Singapoore Shoe Mart",wa:"",upi:"",adr:"",pin:"1234"}}}
-function save(){try{localStorage.setItem(K,JSON.stringify(D))}catch(e){alert("Storage is full. Download a backup and remove old products or photos.")}}
+let D={products:[],sales:[],set:{name:"Singapoore Shoe Mart",wa:"",upi:"",adr:""}};
+/* Data is saved online by the Firebase script at the bottom of this page */
+function save(){if(window.persist)window.persist(D)}
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const inr=n=>"₹"+Math.round(n*100)/100;
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const total=p=>Object.values(p.sizes).reduce((a,b)=>a+b,0);
-let admin=false,fp="All",ft="All",fu="All",fs="All",cart=[],pending=null;
+let admin=false,authed=false,curTab="bill",fp="All",ft="All",fu="All",fs="All",cart=[],pending=null;
+
+/* ---------- Online data arrives here ---------- */
+window.remote=R=>{
+  D={products:R.products.map(p=>({...p,cost:+R.costs[p.id]||0})),
+     sales:R.sales.slice().sort((a,b)=>a.t-b.t),
+     set:{name:"Singapoore Shoe Mart",wa:"",adr:"",...R.shop,upi:R.own.upi||""}};
+  refresh()};
+function refresh(){
+  $("shopName").textContent=D.set.name;document.title=D.set.name;
+  if(!admin)return renderCust();
+  if(curTab==="bill")renderBill();if(curTab==="stock")renderStock();if(curTab==="rep")renderRep()}
+window.setAuth=a=>{authed=a;admin=a;showMode()};
 
 /* ---------- Customer catalogue ---------- */
 function chips(el,list,cur,set){
@@ -216,16 +228,26 @@ function renderCust(){
     ${wa?`<a class="btn g s" href="${wa}" target="_blank" rel="noopener" style="margin-top:auto">Ask on WhatsApp</a>`:""}</div></div>`}).join("")}
 $("q").oninput=renderCust;
 
-/* ---------- Login ---------- */
-$("adminBtn").onclick=()=>{if(admin){admin=false;showMode();return}$("pinIn").value="";$("pinErr").textContent="";$("mPin").classList.remove("hide");$("pinIn").focus()};
+/* ---------- Login (Firebase email and password) ---------- */
+$("adminBtn").onclick=()=>{
+  if(admin){admin=false;showMode();return}
+  if(authed){admin=true;showMode();return}
+  $("pinIn").value="";$("pinErr").textContent="";$("mPin").classList.remove("hide");$("pinEm").focus()};
 $("pinNo").onclick=()=>$("mPin").classList.add("hide");
-$("pinOk").onclick=()=>{if($("pinIn").value===D.set.pin){admin=true;$("mPin").classList.add("hide");showMode();tab("bill")}else $("pinErr").textContent="Wrong PIN. Try again."};
+$("pinOk").onclick=async()=>{
+  $("pinErr").textContent="Checking…";
+  const ok=await window.fbLogin($("pinEm").value.trim(),$("pinIn").value);
+  if(ok){$("mPin").classList.add("hide");$("pinErr").textContent=""}
+  else $("pinErr").textContent="Wrong email or password. Try again."};
 $("pinIn").onkeydown=e=>{if(e.key==="Enter")$("pinOk").click()};
+$("pinEm").onkeydown=e=>{if(e.key==="Enter")$("pinIn").focus()};
+$("lo").onclick=()=>window.fbLogout();
 function showMode(){$("cust").classList.toggle("hide",admin);$("own").classList.toggle("hide",!admin);$("adminBtn").textContent=admin?"Customer view":"Owner login";admin?tab("bill"):renderCust()}
 
 /* ---------- Owner tabs ---------- */
 const TABS=[["bill","Billing"],["stock","Products & stock"],["rep","Sales & profit"],["set","Settings"]];
 function tab(t){
+  curTab=t;
   $("tabs").innerHTML=TABS.map(([k,n])=>`<button class="chip ${k===t?"on":""}" onclick="tab('${k}')">${n}</button>`).join("");
   TABS.forEach(([k])=>$("t-"+k).classList.toggle("hide",k!==t));
   if(t==="bill")renderBill();if(t==="stock")renderStock();if(t==="rep")renderRep();if(t==="set")renderSet()}
@@ -233,12 +255,15 @@ function tab(t){
 /* ---------- Billing ---------- */
 function fillSel(el,list,v){el.innerHTML=list.map(x=>`<option>${x}</option>`).join("");if(v)el.value=v}
 function renderBill(){
+  const v=$("bP").value;
   $("bP").innerHTML=D.products.map(p=>`<option value="${p.id}">${esc(p.name)} — ${inr(p.sell)}</option>`).join("")||"<option value=''>No products</option>";
+  if(v&&D.products.some(p=>p.id===v))$("bP").value=v;
   sizeOpts();renderCart()}
 function sizeOpts(){
-  const p=D.products.find(x=>x.id===$("bP").value);
-  $("bS").innerHTML=p?Object.entries(p.sizes).filter(([,n])=>n>0).map(([s,n])=>`<option value="${esc(s)}">${esc(s)} (${n} left)</option>`).join(""):""}
-$("bP").onchange=sizeOpts;
+  const sv=$("bS").value,p=D.products.find(x=>x.id===$("bP").value);
+  $("bS").innerHTML=p?Object.entries(p.sizes).filter(([,n])=>n>0).map(([s,n])=>`<option value="${esc(s)}">${esc(s)} (${n} left)</option>`).join(""):"";
+  if([...$("bS").options].some(o=>o.value===sv))$("bS").value=sv}
+$("bP").onchange=()=>{$("bS").innerHTML="";sizeOpts()};
 $("bAdd").onclick=()=>{
   const p=D.products.find(x=>x.id===$("bP").value),s=$("bS").value,q=parseInt($("bQ").value)||1;
   if(!p||!s)return alert("Choose a product and size that is in stock.");
@@ -298,7 +323,7 @@ $("pSave").onclick=async()=>{
   const p={id:id||uid(),name,person:$("pPe").value,type:$("pTy").value,use:$("pUs").value,cost:parseFloat($("pCo").value)||0,sell:parseFloat($("pSe").value),sizes,img};
   old?Object.assign(old,p):D.products.push(p);save();clearForm();renderStock()};
 function renderStock(){
-  fillSel($("pPe"),PERSON);fillSel($("pTy"),TYPE);fillSel($("pUs"),USE);
+  if(!$("pPe").options.length){fillSel($("pPe"),PERSON);fillSel($("pTy"),TYPE);fillSel($("pUs"),USE)}
   const low=[];D.products.forEach(p=>Object.entries(p.sizes).forEach(([s,n])=>{if(n<=2)low.push(`<div style="padding:4px 0">${esc(p.name)} — ${esc(s)}: <span class="badge ${n?"in":"out"}" style="${n?"background:#fef3c7;color:var(--warn)":""}">${n?n+" left":"Out"}</span></div>`)}));
   $("low").innerHTML=low.join("")||'<p class="tag">All sizes have enough stock.</p>';
   $("pTable").innerHTML=D.products.length?"<tr><th></th><th>Product</th><th>Buy / Sell</th><th>Stock</th><th></th></tr>"+D.products.map(p=>`<tr><td><div class="thumb" style="${p.img?`background-image:url(${p.img})`:""}"></div></td><td>${esc(p.name)}<div class="tag">${esc(p.person)} · ${esc(p.type)}</div></td><td>${inr(p.cost)} / ${inr(p.sell)}</td><td>${total(p)}</td><td style="white-space:nowrap"><button class="btn l s" onclick="edit('${p.id}')">Edit</button> <button class="btn r s" onclick="del('${p.id}')">Delete</button></td></tr>`).join(""):'<tr><td class="empty">No products yet. Add your first one above.</td></tr>'}
@@ -325,14 +350,14 @@ function renderRep(){
   $("allBtn").textContent=showAll?"Show last 15 only":"Show all bills ("+D.sales.length+")"}
 let editing=null;
 function editSale(id){
-  const s=D.sales.find(x=>x.id===id);if(!s)return;editing=s;
+  const s=D.sales.find(x=>x.id===id);if(!s)return;editing=id;
   $("eTitle").textContent="Edit bill "+s.no;
   $("eItems").innerHTML=s.items.map((i,k)=>`<div class="row" style="align-items:center;margin-bottom:6px"><div>${esc(i.name)} (${esc(i.size)})<div class="tag">${inr(i.sell)} each</div></div><input type="number" min="0" value="${i.qty}" id="eq${k}" aria-label="Quantity"></div>`).join("");
   $("eN").value=s.name||"";$("eP").value=s.phone||"";$("eD").value=s.disc||0;$("eM").value=s.mode;
   $("mEdit").classList.remove("hide")}
 $("eCancel").onclick=()=>{$("mEdit").classList.add("hide");editing=null};
 $("eSave").onclick=()=>{
-  const s=editing;if(!s)return;
+  const s=D.sales.find(x=>x.id===editing);if(!s)return alert("This bill changed on another device. Close and open it again.");
   const q=s.items.map((_,k)=>Math.max(0,parseInt($("eq"+k).value)||0));
   if(!q.some(n=>n>0))return alert("A bill needs at least one item. Use Delete to remove the whole bill.");
   for(let k=0;k<s.items.length;k++){
@@ -380,14 +405,81 @@ $("csvY").onclick=()=>{
 function dl(n,t,txt){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([txt],{type:t}));a.download=n;a.click()}
 
 /* ---------- Settings & backup ---------- */
-function renderSet(){$("sName").value=D.set.name;$("sWa").value=D.set.wa;$("sUpi").value=D.set.upi;$("sAdr").value=D.set.adr;$("sPin").value=""}
+function renderSet(){$("sName").value=D.set.name;$("sWa").value=D.set.wa;$("sUpi").value=D.set.upi;$("sAdr").value=D.set.adr}
 $("sSave").onclick=()=>{D.set.name=$("sName").value.trim()||"Singapoore Shoe Mart";D.set.wa=$("sWa").value.trim();D.set.upi=$("sUpi").value.trim();D.set.adr=$("sAdr").value.trim();
-  const p=$("sPin").value.trim();if(p){if(p.length<4)return alert("PIN needs at least 4 digits.");D.set.pin=p}
   save();$("shopName").textContent=D.set.name;alert("Settings saved.")};
 $("bk").onclick=()=>dl("shoe-mart-backup-"+new Date().toISOString().slice(0,10)+".json","application/json",JSON.stringify(D));
-$("rs").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!d.products||!d.sales)throw 0;ask("Replace all current data with this backup?","Replace","Cancel").then(ok=>{if(ok){D=d;save();location.reload()}})}catch(x){alert("This is not a valid backup file.")}};r.readAsText(f)};
+function applyBackup(d){
+  D={products:d.products,sales:d.sales||[],set:{...D.set,...(d.set||{})}};delete D.set.pin;
+  save();alert("Data uploaded to your online shop.");tab("set")}
+$("rs").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!d.products||!d.sales)throw 0;ask("Replace all current data with this backup?","Replace","Cancel").then(ok=>{if(ok)applyBackup(d)})}catch(x){alert("This is not a valid backup file.")}};r.readAsText(f)};
+$("imp").onclick=()=>{
+  let d;try{d=JSON.parse(localStorage.getItem(K))}catch(e){}
+  if(!d||!d.products||!d.products.length)return alert("No older data found on this device.");
+  ask("Upload "+d.products.length+" products and "+(d.sales||[]).length+" bills saved on this device to your online shop?\nThis replaces the online data.","Upload","Cancel").then(ok=>{if(ok)applyBackup(d)})};
 
 renderCust();
+</script>
+
+<script type="module">
+import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import{getAuth,signInWithEmailAndPassword,onAuthStateChanged,signOut}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import{getFirestore,collection,doc,setDoc,deleteDoc,onSnapshot}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const app=initializeApp({
+  apiKey:"AIzaSyBrw1cmQ5O61m-Qzddv38pteZ19mwSX0Hs",
+  authDomain:"shoe-mart-dfa6a.firebaseapp.com",
+  projectId:"shoe-mart-dfa6a",
+  storageBucket:"shoe-mart-dfa6a.firebasestorage.app",
+  messagingSenderId:"704766783790",
+  appId:"1:704766783790:web:dffa3624ec3ec7ecd80abf"
+});
+const auth=getAuth(app),db=getFirestore(app);
+
+/* Same text for the same data, whatever the key order, so changes can be detected */
+const J=o=>JSON.stringify(o,(k,v)=>v&&typeof v==="object"&&!Array.isArray(v)?Object.fromEntries(Object.entries(v).sort(([a],[b])=>a<b?-1:a>b?1:0)):v);
+const R={products:[],costs:{},sales:[],shop:{},own:{}};
+let cOk=false,sOk=false,oOk=false,un=[];
+const push=()=>window.remote&&window.remote(R);
+const rows=s=>s.docs.map(d=>({...d.data(),id:d.id}));
+const warn=e=>console.error(e);
+
+/* Public data: anyone can read the catalogue (no buying prices) */
+onSnapshot(collection(db,"products"),s=>{R.products=rows(s);push()},warn);
+onSnapshot(doc(db,"pub","shop"),s=>{R.shop=s.data()||{};push()},warn);
+
+/* Private data: only the logged-in owner can read bills, buying prices and UPI ID */
+onAuthStateChanged(auth,u=>{
+  un.forEach(f=>f());un=[];cOk=sOk=oOk=false;
+  if(u){
+    un=[onSnapshot(collection(db,"sales"),s=>{R.sales=rows(s);sOk=true;push()},e=>alert("Cannot read bills: "+e.message)),
+        onSnapshot(doc(db,"owner","costs"),s=>{R.costs=s.data()||{};cOk=true;push()},e=>alert("Cannot read prices: "+e.message)),
+        onSnapshot(doc(db,"owner","settings"),s=>{R.own=s.data()||{};oOk=true;push()},warn)];
+  }else{R.sales=[];R.costs={};R.own={}}
+  push();window.setAuth&&window.setAuth(!!u)});
+
+window.fbLogin=async(e,p)=>{try{await signInWithEmailAndPassword(auth,e,p);return true}catch(x){return false}};
+window.fbLogout=()=>signOut(auth);
+
+/* Saves only what changed */
+window.persist=async D=>{
+  if(!auth.currentUser)return;
+  if(!(cOk&&sOk&&oOk))return alert("Still loading your data. Wait a moment and try again.");
+  const ops=[],pub={},cost={};
+  D.products.forEach(p=>{const{cost:c,...rest}=p;pub[p.id]=rest;cost[p.id]=c});
+  const old=Object.fromEntries(R.products.map(p=>[p.id,p]));
+  for(const id in pub)if(J(pub[id])!==J(old[id]))ops.push(setDoc(doc(db,"products",id),pub[id]));
+  for(const id in old)if(!pub[id])ops.push(deleteDoc(doc(db,"products",id)));
+  if(J(cost)!==J(R.costs))ops.push(setDoc(doc(db,"owner","costs"),cost));
+  const so=Object.fromEntries(R.sales.map(s=>[s.id,s])),sn=Object.fromEntries(D.sales.map(s=>[s.id,s]));
+  for(const id in sn)if(J(sn[id])!==J(so[id]))ops.push(setDoc(doc(db,"sales",id),sn[id]));
+  for(const id in so)if(!sn[id])ops.push(deleteDoc(doc(db,"sales",id)));
+  const shop={name:D.set.name,wa:D.set.wa,adr:D.set.adr};
+  if(J(shop)!==J(R.shop))ops.push(setDoc(doc(db,"pub","shop"),shop));
+  const own={upi:D.set.upi};
+  if(J(own)!==J(R.own))ops.push(setDoc(doc(db,"owner","settings"),own));
+  try{await Promise.all(ops)}catch(e){alert("Could not save: "+e.message)}
+};
 </script>
 </body>
 </html>
